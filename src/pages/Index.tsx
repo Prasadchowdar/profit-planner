@@ -13,8 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { calculateProfits, CalculationResult } from '@/lib/calculations';
-import { Crop } from '@/data/marketData';
+import { calculateProfits, CalculationResult, getGoogleMapsUrl } from '@/lib/calculations';
+import { Crop, LOCATIONS } from '@/data/marketData';
 import { Search, RotateCcw, Leaf } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -95,10 +95,24 @@ const Index = () => {
   };
 
   const handleHistoryClick = () => {
-    toast({
-      title: "Coming Soon",
-      description: "Calculation history feature will be available soon!",
-    });
+    navigate('/history');
+  };
+
+  // Calculate mapsUrl for ActionChecklist
+  const getMapsUrl = () => {
+    if (results.length === 0) return null;
+    const winner = results[0];
+    if (winner.market.distanceKm === 0) return null;
+    
+    const userLocation = LOCATIONS.find(l => l.id === location);
+    if (!userLocation) return null;
+    
+    return getGoogleMapsUrl(
+      userLocation.latitude,
+      userLocation.longitude,
+      winner.market.latitude,
+      winner.market.longitude
+    );
   };
 
   if (authLoading) {
@@ -184,7 +198,10 @@ const Index = () => {
             <ComparisonTable results={results} />
 
             {/* Action Checklist */}
-            <ActionChecklist />
+            <ActionChecklist 
+              mapsUrl={getMapsUrl()} 
+              marketName={results[0]?.market.marketName}
+            />
 
             {/* Reset Button */}
             <Button
