@@ -192,6 +192,9 @@ const Index = () => {
               winner={results[0]}
               runnerUp={results[1]}
               userLocationId={location}
+              crop={crop as Crop}
+              quantity={quantity}
+              quantityUnit={unit}
             />
 
             {/* Comparison Table */}

@@ -1,20 +1,31 @@
-import { Trophy, TrendingUp, MapPin, ExternalLink, Copy } from 'lucide-react';
+import { Trophy, TrendingUp, MapPin, ExternalLink, Copy, Clock, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CalculationResult, formatCurrency, getRecommendationReason, getGoogleMapsUrl } from '@/lib/calculations';
-import { LOCATIONS } from '@/data/marketData';
+import { CalculationResult, formatCurrency, getRecommendationReason, getGoogleMapsUrl, analyzeFuturePotential, FuturePotentialResult } from '@/lib/calculations';
+import { LOCATIONS, Crop } from '@/data/marketData';
 import { toast } from '@/hooks/use-toast';
 
 interface WinnerCardProps {
   winner: CalculationResult;
   runnerUp: CalculationResult | undefined;
   userLocationId: string;
+  crop: Crop;
+  quantity: number;
+  quantityUnit: 'quintals' | 'tons';
 }
 
-export function WinnerCard({ winner, runnerUp, userLocationId }: WinnerCardProps) {
+export function WinnerCard({ winner, runnerUp, userLocationId, crop, quantity, quantityUnit }: WinnerCardProps) {
   const userLocation = LOCATIONS.find(l => l.id === userLocationId);
   const reason = getRecommendationReason(winner, runnerUp);
+  
+  // Analyze future potential
+  const futurePotential: FuturePotentialResult = analyzeFuturePotential(
+    winner.market,
+    crop,
+    quantity,
+    quantityUnit
+  );
   
   const mapsUrl = userLocation 
     ? getGoogleMapsUrl(
@@ -124,6 +135,41 @@ export function WinnerCard({ winner, runnerUp, userLocationId }: WinnerCardProps
             </Button>
           </div>
         )}
+
+        {/* Time Advice - Sell Now vs Sell Later */}
+        <div className="border-t pt-4 mt-4">
+          <h4 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Time Advice
+          </h4>
+          
+          {futurePotential.isBetterLater ? (
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
+              <Badge className="bg-primary text-primary-foreground mb-2">
+                💡 Opportunity
+              </Badge>
+              <p className="text-sm font-medium text-foreground">
+                Store for 7 days to earn <span className="font-bold text-primary">{formatCurrency(futurePotential.extraProfit)}</span> more.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Expected price: {formatCurrency(futurePotential.futurePrice)}/quintal • Storage cost: {formatCurrency(futurePotential.storageCost)}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3">
+              <Badge variant="destructive" className="mb-2">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Risk Alert
+              </Badge>
+              <p className="text-sm font-medium text-foreground">
+                Sell NOW. Storing will cause <span className="font-bold text-destructive">{formatCurrency(Math.abs(futurePotential.extraProfit))}</span> loss due to spoilage.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Spoilage risk: {futurePotential.lossRisk} • Storage cost: {formatCurrency(futurePotential.storageCost)}
+              </p>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
