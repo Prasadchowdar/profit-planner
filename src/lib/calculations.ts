@@ -1,4 +1,4 @@
-import { Market, Crop, getMarketsByCrop } from '@/data/marketData';
+import { Market, Crop, getMarketsByCrop, CROP_STORAGE_INFO } from '@/data/marketData';
 
 export interface CalculationResult {
   market: Market;
@@ -110,4 +110,65 @@ export function getGoogleMapsUrl(
   toLng: number
 ): string {
   return `https://www.google.com/maps/dir/?api=1&origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&travelmode=driving`;
+}
+
+// Future potential analysis for Sell Now vs Sell Later
+export interface FuturePotentialResult {
+  isBetterLater: boolean;
+  extraProfit: number; // Positive if storing is better, negative if selling now is better
+  lossRisk: 'Low' | 'Medium' | 'High';
+  futurePrice: number;
+  saleableQuantity: number;
+  storageCost: number;
+  currentNetProfit: number;
+  futureNetProfit: number;
+}
+
+export function analyzeFuturePotential(
+  market: Market,
+  crop: Crop,
+  quantity: number,
+  quantityUnit: 'quintals' | 'tons' = 'quintals'
+): FuturePotentialResult {
+  const quantityInQuintals = quantityUnit === 'tons' ? quantity * 10 : quantity;
+  const storageInfo = CROP_STORAGE_INFO[crop];
+  
+  // Current profit calculation
+  const currentPrice = market.pricePerQuintal;
+  const transportCost = market.distanceKm * 2 * market.transportRatePerKm;
+  const loadingCost = market.loadingFeePerQuintal * quantityInQuintals;
+  const currentGrossRevenue = currentPrice * quantityInQuintals;
+  const currentNetProfit = currentGrossRevenue - transportCost - loadingCost;
+  
+  // Future (next week) calculation
+  const futurePrice = currentPrice * storageInfo.volatilityMultiplier;
+  const saleableQuantity = quantityInQuintals * (1 - storageInfo.lossRatePerWeek);
+  const storageCost = quantityInQuintals * storageInfo.storageCostPerQuintal;
+  const futureGrossRevenue = futurePrice * saleableQuantity;
+  const futureNetProfit = futureGrossRevenue - transportCost - loadingCost - storageCost;
+  
+  // Determine if waiting is beneficial
+  const extraProfit = futureNetProfit - currentNetProfit;
+  const isBetterLater = extraProfit > 0;
+  
+  // Assess risk based on loss rate
+  let lossRisk: 'Low' | 'Medium' | 'High';
+  if (storageInfo.lossRatePerWeek <= 0.02) {
+    lossRisk = 'Low';
+  } else if (storageInfo.lossRatePerWeek <= 0.05) {
+    lossRisk = 'Medium';
+  } else {
+    lossRisk = 'High';
+  }
+  
+  return {
+    isBetterLater,
+    extraProfit,
+    lossRisk,
+    futurePrice,
+    saleableQuantity,
+    storageCost,
+    currentNetProfit,
+    futureNetProfit,
+  };
 }

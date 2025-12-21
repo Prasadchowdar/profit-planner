@@ -481,3 +481,23 @@ export function getWeightEstimate(quantity: number, unit: 'quintals' | 'tons'): 
   if (quintals <= 100) return "About 1 large truck (10 ton)";
   return `About ${Math.ceil(quintals / 100)} large truck loads`;
 }
+
+// Storage risk information for each crop
+export interface CropStorageInfo {
+  lossRatePerWeek: number; // Percentage of crop lost per week (0.15 = 15%)
+  storageCostPerQuintal: number; // Cost in INR per quintal per week
+  volatilityMultiplier: number; // Expected price change multiplier (1.1 = 10% increase)
+}
+
+export const CROP_STORAGE_INFO: Record<Crop, CropStorageInfo> = {
+  Rice: { lossRatePerWeek: 0.01, storageCostPerQuintal: 10, volatilityMultiplier: 1.05 },
+  Wheat: { lossRatePerWeek: 0.01, storageCostPerQuintal: 12, volatilityMultiplier: 1.04 },
+  Millets: { lossRatePerWeek: 0.02, storageCostPerQuintal: 15, volatilityMultiplier: 1.06 },
+  Maize: { lossRatePerWeek: 0.03, storageCostPerQuintal: 18, volatilityMultiplier: 1.08 },
+  Pulses: { lossRatePerWeek: 0.02, storageCostPerQuintal: 20, volatilityMultiplier: 1.07 },
+  Sugarcane: { lossRatePerWeek: 0.08, storageCostPerQuintal: 25, volatilityMultiplier: 1.03 },
+  Cotton: { lossRatePerWeek: 0.02, storageCostPerQuintal: 20, volatilityMultiplier: 1.1 },
+  Jute: { lossRatePerWeek: 0.03, storageCostPerQuintal: 22, volatilityMultiplier: 1.08 },
+  Oilseeds: { lossRatePerWeek: 0.04, storageCostPerQuintal: 25, volatilityMultiplier: 1.12 },
+  Tea: { lossRatePerWeek: 0.15, storageCostPerQuintal: 50, volatilityMultiplier: 1.2 },
+};
