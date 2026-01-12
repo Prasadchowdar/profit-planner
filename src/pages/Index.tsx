@@ -121,7 +121,17 @@ const Index = () => {
           net_profit: best.netProfit,
           all_results: JSON.parse(JSON.stringify(calculatedResults)),
         }]);
-        if (error) console.error('Failed to save calculation history:', error);
+        if (error) {
+          // Only log detailed errors in development to prevent information leakage
+          if (import.meta.env.DEV) {
+            console.error('Failed to save calculation history:', error);
+          }
+          toast({
+            title: "Save Error",
+            description: "Unable to save calculation to history.",
+            variant: "destructive",
+          });
+        }
       }
     }
 

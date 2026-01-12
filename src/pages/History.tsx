@@ -58,7 +58,10 @@ const History = () => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Failed to fetch history:', error);
+      // Only log detailed errors in development to prevent information leakage
+      if (import.meta.env.DEV) {
+        console.error('Failed to fetch history:', error);
+      }
       toast({
         title: "Error",
         description: "Failed to load calculation history.",
