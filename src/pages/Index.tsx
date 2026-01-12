@@ -17,6 +17,7 @@ import { calculateProfits, CalculationResult, getGoogleMapsUrl } from '@/lib/cal
 import { Crop, LOCATIONS } from '@/data/marketData';
 import { Search, RotateCcw, Leaf } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { validateCalculationHistory, isJsonSizeValid, VALIDATION_LIMITS } from '@/lib/validation';
 
 type ViewState = 'input' | 'loading' | 'results';
 
@@ -51,6 +52,16 @@ const Index = () => {
       return;
     }
 
+    // Validate quantity limits
+    if (quantity > VALIDATION_LIMITS.MAX_QUANTITY) {
+      toast({
+        title: "Invalid Quantity",
+        description: `Quantity cannot exceed ${VALIDATION_LIMITS.MAX_QUANTITY}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setViewState('loading');
 
     // Simulate analysis time for better UX
@@ -68,7 +79,9 @@ const Index = () => {
     // Save to history if user is logged in
     if (user && calculatedResults.length > 0) {
       const best = calculatedResults[0];
-      const { error } = await supabase.from('calculation_history').insert([{
+      
+      // Prepare data for validation
+      const historyData = {
         user_id: user.id,
         crop,
         quantity,
@@ -76,9 +89,40 @@ const Index = () => {
         location,
         best_market: best.market.marketName,
         net_profit: best.netProfit,
-        all_results: JSON.parse(JSON.stringify(calculatedResults)),
-      }]);
-      if (error) console.error('Failed to save calculation history:', error);
+        all_results: calculatedResults,
+      };
+
+      // Validate data before insert
+      const validationResult = validateCalculationHistory(historyData);
+      
+      if (!validationResult.success) {
+        console.error('Validation failed:', validationResult.error.errors);
+        toast({
+          title: "Validation Error",
+          description: "Failed to save calculation - invalid data",
+          variant: "destructive",
+        });
+      } else if (!isJsonSizeValid(calculatedResults)) {
+        console.error('Results data too large to store');
+        toast({
+          title: "Data Error",
+          description: "Calculation results too large to save",
+          variant: "destructive",
+        });
+      } else {
+        // Data is valid, proceed with insert
+        const { error } = await supabase.from('calculation_history').insert([{
+          user_id: user.id,
+          crop,
+          quantity,
+          quantity_unit: unit,
+          location,
+          best_market: best.market.marketName,
+          net_profit: best.netProfit,
+          all_results: JSON.parse(JSON.stringify(calculatedResults)),
+        }]);
+        if (error) console.error('Failed to save calculation history:', error);
+      }
     }
 
     setViewState('results');

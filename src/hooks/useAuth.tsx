@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { validateSignupData, sanitizeString, VALIDATION_LIMITS } from '@/lib/validation';
 
 interface AuthContextType {
   user: User | null;
@@ -39,15 +40,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
+    // Validate signup data before sending to Supabase
+    const validationResult = validateSignupData({ email, password, fullName });
+    
+    if (!validationResult.success) {
+      const errorMessage = validationResult.error.errors[0]?.message || 'Invalid signup data';
+      return { error: new Error(errorMessage) };
+    }
+
     const redirectUrl = `${window.location.origin}/`;
     
+    // Sanitize full_name before storing
+    const sanitizedFullName = fullName 
+      ? sanitizeString(fullName, VALIDATION_LIMITS.MAX_FULL_NAME_LENGTH)
+      : undefined;
+    
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email: validationResult.data.email,
+      password: validationResult.data.password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          full_name: fullName,
+          full_name: sanitizedFullName,
         },
       },
     });
